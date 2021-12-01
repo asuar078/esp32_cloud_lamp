@@ -1,0 +1,3 @@
+[submodule "lib/OpenWeatherOneCall"]
+	path = lib/OpenWeatherOneCall
+	url = https://github.com/JHershey69/OpenWeatherOneCall.git
