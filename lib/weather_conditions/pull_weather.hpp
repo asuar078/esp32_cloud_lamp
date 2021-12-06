@@ -11,16 +11,20 @@
 class PullWeather
 {
 public:
+  PullWeather() = default;
+
   PullWeather(float latitude, float longitude);
 
   bool begin();
+
+  int set_lat_lon(float lat, float lon);
 
   WeatherConditions get_weather_condition();
 
 private:
   // For Latitude and Longitude Location setting if used
-  float latitude_;
-  float longitude_;
+  float latitude_ = 27.867867048971497;
+  float longitude_ = -82.72259499531707;
 
   OpenWeatherOneCall owoc_;
 

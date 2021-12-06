@@ -23,6 +23,11 @@ bool PullWeather::begin()
   owoc_.setUnits(weather_units_);
 }
 
+int PullWeather::set_lat_lon(float lat, float lon)
+{
+  return owoc_.setLatLon(lat, lon);
+}
+
 WeatherConditions PullWeather::get_weather_condition()
 {
   // Now call the weather. Please notice no arguments are required in this call
