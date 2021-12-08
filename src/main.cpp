@@ -38,21 +38,40 @@ namespace
 void setup()
 {
   Serial.begin(115200);
+  pinMode(mode_gpio, INPUT_PULLUP);
+  delay(1000);
 
   save_data.begin();
 
-  pinMode(mode_gpio, INPUT_PULLUP);
-  delay(100);
+  {
+    SaveDataGuard guard(save_data);
+
+    Serial.println();
+    Serial.print("Saved latitude: ");
+    Serial.println(save_data.get_latitude());
+    Serial.print("Saved longitude: ");
+    Serial.println(save_data.get_longitude());
+
+    Serial.println();
+    Serial.print("Saved SSID: ");
+    Serial.println(save_data.get_wifi_ssid());
+    Serial.print("Saved password: ");
+    Serial.println(save_data.get_wifi_password());
+  }
 
   if (digitalRead(mode_gpio) == LOW)
   {
+    SaveDataGuard guard(save_data);
+
     // station mode
     Serial.println();
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(WIFI_SSID);
+    Serial.println("WiFi Station Mode");
+    Serial.print("Connecting to: ");
+    // Serial.println(WIFI_SSID);
+    Serial.println(save_data.get_wifi_ssid());
 
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    // WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(save_data.get_wifi_ssid().c_str(), save_data.get_wifi_password().c_str());
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -68,6 +87,11 @@ void setup()
   else
   {
     // access point mode
+    Serial.println();
+    Serial.println("WiFi Access point Mode");
+    Serial.print("Creating access point: ");
+    Serial.println(AP_WIFI_SSID);
+
     // WiFi.softAP(AP_WIFI_SSID, AP_WIFI_PASSWORD);
     WiFi.softAP(AP_WIFI_SSID);
     IPAddress myIP = WiFi.softAPIP();
@@ -125,11 +149,20 @@ void setup()
   }
   Serial.println("mDNS responder started");
 
-  // start pull weather api service
-  pull_weather.begin();
+  {
+    SaveDataGuard guard(save_data);
+
+    // start pull weather api service
+    pull_weather.begin();
+
+    pull_weather.set_lat_lon(save_data.get_latitude(), save_data.get_longitude());
+  }
 
   // setup server routing
-  server.on(UriBraces("/lat={}/lon={}"), HTTP_POST, []()
+  server.on(F("/status/wifi"), HTTP_GET, []()
+            { server.send(200, "text/plain", "mode:" + String(WiFi.getMode()) + "/status:" + String(WiFi.status())); });
+
+  server.on(UriBraces("/lat={}/lon={}"), HTTP_POST, [&]()
             {
               String lat = server.pathArg(0);
               String lon = server.pathArg(1);
@@ -142,7 +175,28 @@ void setup()
               save_data.set_latitude(lat.toFloat());
               save_data.set_longitude(lon.toFloat());
 
-              server.send(200, "text/plain", "lat: " + lat + ", " + "lon: " + lon); });
+              pull_weather.set_lat_lon(lat.toFloat(), lon.toFloat());
+
+              server.send(200, "text/plain", "lat: " + lat + ", lon: " + lon); });
+
+  server.on(UriBraces("/ssid={}/pass={}"), HTTP_POST, [&]()
+            {
+              String ssid = server.pathArg(0);
+              String pass = server.pathArg(1);
+
+              ssid.replace("%20", " ");
+              pass.replace("%20", " ");
+
+              Serial.print("Received ssid: ");
+              Serial.println(ssid);
+              Serial.print("Received password: ");
+              Serial.println(pass);
+
+              SaveDataGuard guard(save_data);
+              save_data.set_wifi_ssid(ssid);
+              save_data.set_wifi_password(pass);
+
+              server.send(200, "text/plain", "ssid: " + ssid + ", pass: " + pass); });
 
   server.begin();
   Serial.println("HTTP server started");
