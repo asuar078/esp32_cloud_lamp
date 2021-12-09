@@ -13,12 +13,21 @@
 #include <weather_conditions.hpp>
 #include <save_data.hpp>
 
+#include <led_strip.hpp>
 #include <wifi_credentials.hpp>
 
 #include <cctype>
 
 namespace
 {
+
+  constexpr uint16_t NUMPIXELS = 60; // Number of LEDs in strip
+  // constexpr uint8_t DATAPIN = D4;
+  // constexpr uint8_t CLOCKPIN = D5;
+
+  Adafruit_DotStar strip(NUMPIXELS, DOTSTAR_BRG);
+
+  LEDStrip ledStrip(strip);
 
   SaveData save_data;
 
