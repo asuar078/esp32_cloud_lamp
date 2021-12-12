@@ -22,26 +22,28 @@ namespace
 {
 
   constexpr uint16_t NUMPIXELS = 60; // Number of LEDs in strip
-  // constexpr uint8_t DATAPIN = D4;
-  // constexpr uint8_t CLOCKPIN = D5;
+  constexpr uint8_t DATAPIN = 17;
+  constexpr uint8_t CLOCKPIN = 16;
 
-  Adafruit_DotStar strip(NUMPIXELS, DOTSTAR_BRG);
-
-  LEDStrip ledStrip(strip);
+  LEDStrip strip(NUMPIXELS, DATAPIN, CLOCKPIN, DOTSTAR_BRG);
 
   SaveData save_data;
 
   WebServer server(80);
 
   PullWeather pull_weather;
+  WeatherConditions weather_condition = WeatherConditions::unknown;
 
   constexpr const auto mode_gpio = GPIO_NUM_4;
 
   bool update_in_progress = false;
-  uint32_t previous_millis = 0;
+  uint32_t previous_weather_millis = 0;
+  uint32_t previous_led_millis = 0;
 
-  /* pull weather data every 15 seconds */
-  constexpr const uint32_t weather_interval = 15000;
+  /* pull weather data every 60 seconds */
+  constexpr const uint32_t weather_interval = 60000;
+  /* update led strip every 2 seconds */
+  constexpr const uint32_t led_interval = 2000;
 }
 
 void setup()
@@ -49,6 +51,8 @@ void setup()
   Serial.begin(115200);
   pinMode(mode_gpio, INPUT_PULLUP);
   delay(1000);
+
+  strip.begin();
 
   save_data.begin();
 
@@ -84,6 +88,9 @@ void setup()
 
     while (WiFi.status() != WL_CONNECTED)
     {
+      strip.set_color(0xcf1f5c);
+      delay(500);
+      strip.set_color(0);
       delay(500);
       Serial.print(".");
     }
@@ -209,6 +216,14 @@ void setup()
 
   server.begin();
   Serial.println("HTTP server started");
+
+  if (WiFi.getMode() != WIFI_MODE_STA && WiFi.status() != WL_CONNECTED)
+  {
+    weather_condition = pull_weather.get_weather_condition();
+    return;
+  }
+
+  strip.weather_update(weather_condition);
 }
 
 void loop()
@@ -246,12 +261,20 @@ void loop()
     return;
   }
 
-  // const auto current_millis = millis();
-  // if (current_millis - previous_millis >= weather_interval)
-  // {
-  //   pull_weather.get_weather_condition();
-  //   previous_millis = current_millis;
-  // }
+  const auto current_millis = millis();
+
+  // update led strip
+  if (current_millis - previous_led_millis >= led_interval)
+  {
+    strip.weather_update(weather_condition);
+    previous_led_millis = current_millis;
+  }
+
+  if (current_millis - previous_weather_millis >= weather_interval)
+  {
+    weather_condition = pull_weather.get_weather_condition();
+    previous_weather_millis = current_millis;
+  }
 
   delay(2); // allow the cpu to switch to other tasks
 }

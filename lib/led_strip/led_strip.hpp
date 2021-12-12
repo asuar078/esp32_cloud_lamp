@@ -7,13 +7,12 @@
 
 #include <weather_conditions.hpp>
 
-class LEDStrip
+class LEDStrip : public Adafruit_DotStar
 {
-private:
-  Adafruit_DotStar strip;
-
 public:
-  LEDStrip(Adafruit_DotStar &dotstar);
+  // use super constructor
+  using Adafruit_DotStar::Adafruit_DotStar;
+
   void weather_update(WeatherConditions weather);
 
   void clear_cloud(void);
@@ -29,7 +28,12 @@ public:
 
   // todo
   void thunderstorm(void);
+  void snow(void);
+  void misty(void);
+  void smokey(void);
+  void tornado(void);
   void disco(void);
+  void dusty(void);
 };
 
 #endif
